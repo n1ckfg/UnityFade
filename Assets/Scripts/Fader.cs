@@ -44,9 +44,9 @@ public class Fader : MonoBehaviour {
 
 	private IEnumerator doFadeIn(float _fadeTime) {
 		isBlocked = true;
-
+			
 		while (alphaVal > 0f) {
-			alphaVal -= 0.01f;
+			alphaVal -= getAlphaDelta(_fadeTime);
 			if (alphaVal < 0f) alphaVal = 0f;
 			ren.material.SetColor("_Color", new Color(0f, 0f, 0f, alphaVal)); 
 			yield return new WaitForSeconds(0);
@@ -61,13 +61,17 @@ public class Fader : MonoBehaviour {
 		isBlocked = true;
 
 		while (alphaVal < 1f) {
-			alphaVal += 0.01f;
+			alphaVal += getAlphaDelta(_fadeTime);
 			if (alphaVal > 1f) alphaVal = 1f;
 			ren.material.SetColor("_Color", new Color(0f, 0f, 0f, alphaVal)); 
 			yield return new WaitForSeconds(0);
 		}
 
 		isBlocked = false;	
+	}
+
+	private float getAlphaDelta(float _fadeTime) {
+		return 1f/(_fadeTime * (1f/Time.deltaTime));
 	}
 
 

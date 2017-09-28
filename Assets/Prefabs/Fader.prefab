@@ -124,3 +124,4 @@ MonoBehaviour:
   ren: {fileID: 23593068256188452}
   fadeOnStart: 1
   fadeTime: 3
+  debug: 1
