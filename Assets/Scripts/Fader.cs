@@ -4,75 +4,95 @@ using UnityEngine;
 
 public class Fader : MonoBehaviour {
 
-	public Renderer ren;
-	public bool fadeOnStart = true;
-	public float fadeTime = 3f;
-	public bool debug = false;
+    public enum StartMode { FADE_IN, FADE_OUT, NONE };
+    public StartMode startMode = StartMode.FADE_IN;
+    public Renderer ren;
+    public float fadeTime = 3f;
+    public bool debug = false;
 
-	private bool isBlocked = false;
-	private float alphaVal = 1f;
+    private bool isBlocked = false;
+    private float alphaVal = 0f;
+    private float alphaMin = 0f;
+    private float alphaMax = 1f;
 
-	private void Start() {
-		if (fadeOnStart) fadeIn();
-	}
+    private void Awake() {
+        if (ren == null) ren = GetComponent<Renderer>();
+        if (startMode == StartMode.NONE) ren.enabled = false;
+    }
 
-	private void Update() {
-		if (debug) {
-			if (Input.GetKeyDown(KeyCode.F)) {
-				fadeIn();
-			} else if (Input.GetKeyDown(KeyCode.G)) {
-				fadeOut();
-			}
-		}
-	}
+    private void Start() {
+        if (startMode == StartMode.FADE_IN) {
+            fadeIn();
+        } else if (startMode == StartMode.FADE_OUT) {
+            fadeOut();
+        }
+    }
 
-	public void fadeIn() {
-		if (!isBlocked) StartCoroutine(doFadeIn(fadeTime));
-	}
+    private void Update() {
+        if (debug) {
+            if (Input.GetKeyDown(KeyCode.F)) {
+                fadeIn();
+            } else if (Input.GetKeyDown(KeyCode.G)) {
+                fadeOut();
+            }
+        }
+    }
 
-	public void fadeIn(float _fadeTime) {
-		if (!isBlocked) StartCoroutine(doFadeIn(_fadeTime));
-	}
+    public void fadeIn() {
+        if (!isBlocked) StartCoroutine(doFadeIn(fadeTime));
+    }
 
-	public void fadeOut() {
-		if (!isBlocked) StartCoroutine(doFadeOut(fadeTime));
-	}
+    public void fadeIn(float _fadeTime) {
+        if (!isBlocked) StartCoroutine(doFadeIn(_fadeTime));
+    }
 
-	public void fadeOut(float _fadeTime) {
-		if (!isBlocked) StartCoroutine(doFadeOut(_fadeTime));
-	}
+    public void fadeOut() {
+        if (!isBlocked) StartCoroutine(doFadeOut(fadeTime));
+    }
 
-	private IEnumerator doFadeIn(float _fadeTime) {
-		isBlocked = true;
-			
-		while (alphaVal > 0f) {
-			alphaVal -= getAlphaDelta(_fadeTime);
-			if (alphaVal < 0f) alphaVal = 0f;
-			ren.material.SetColor("_Color", new Color(0f, 0f, 0f, alphaVal)); 
-			yield return new WaitForSeconds(0);
-		}
+    public void fadeOut(float _fadeTime) {
+        if (!isBlocked) StartCoroutine(doFadeOut(_fadeTime));
+    }
 
-		ren.enabled = false;
-		isBlocked = false;		
-	}
+    private void setAlpha() {
+        Color c = ren.material.GetColor("_Color");
+        ren.material.SetColor("_Color", new Color(c[0], c[1], c[2], alphaVal));
+    }
 
-	private IEnumerator doFadeOut(float _fadeTime) {
-		ren.enabled = true;
-		isBlocked = true;
+    private IEnumerator doFadeOut(float _fadeTime) {
+        ren.enabled = true;
+        isBlocked = true;
+        alphaVal = alphaMax;
 
-		while (alphaVal < 1f) {
-			alphaVal += getAlphaDelta(_fadeTime);
-			if (alphaVal > 1f) alphaVal = 1f;
-			ren.material.SetColor("_Color", new Color(0f, 0f, 0f, alphaVal)); 
-			yield return new WaitForSeconds(0);
-		}
+        while (alphaVal > alphaMin) {
+            alphaVal -= getAlphaDelta(_fadeTime);
+            if (alphaVal < alphaMin) alphaVal = alphaMin;
+            setAlpha();
+            yield return new WaitForSeconds(0);
+        }
 
-		isBlocked = false;	
-	}
+        ren.enabled = false;
+        isBlocked = false;
+    }
 
-	private float getAlphaDelta(float _fadeTime) {
-		return 1f/(_fadeTime * (1f/Time.deltaTime));
-	}
+    private IEnumerator doFadeIn(float _fadeTime) {
+        ren.enabled = true;
+        isBlocked = true;
+        alphaVal = alphaMin;
+
+        while (alphaVal < alphaMax) {
+            alphaVal += getAlphaDelta(_fadeTime);
+            if (alphaVal > alphaMax) alphaVal = alphaMax;
+            setAlpha();
+            yield return new WaitForSeconds(0);
+        }
+
+        isBlocked = false;
+    }
+
+    private float getAlphaDelta(float _fadeTime) {
+        return 1f / (_fadeTime * (1f / Time.deltaTime));
+    }
 
 
 }

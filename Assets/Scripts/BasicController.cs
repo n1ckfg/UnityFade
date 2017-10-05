@@ -1,32 +1,25 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System.Collections;
 
 public class BasicController : MonoBehaviour {
 
-	private Rigidbody rb;
-
-	private void Awake() {
-		rb = GetComponent<Rigidbody>();
-	}
-
 	private void Start() {
 		if (useKeyboard) wasdStart();
 		if (useMouse) mouseStart();
-		collisionStart();
 	}
 
 	private void Update() {
 		if (useKeyboard) wasdUpdate();
-		if (useMouse) mouseUpdate();        
-		if (useRaycaster) rayUpdate();        
+		if (useMouse) mouseUpdate();	
+		if (useRaycaster) rayUpdate();	
 	}
 
-	// ~ ~ ~ ~ ~ ~ ~ ~ 
+    // ~ ~ ~ ~ ~ ~ ~ ~ 
 
-	[Header("Keyboard")] 
-	public bool useKeyboard = true;
-	public bool useYAxis = false;
-	public string yAxisName = "Vertical2";
+    [Header("Keyboard")] 
+    public bool useKeyboard = true;
+    public bool useYAxis = false;
+    public string yAxisName = "Vertical2";
 	public float walkSpeed = 10f;
 	public float runSpeed = 100f;
 	public float accel = 0.01f;
@@ -39,7 +32,7 @@ public class BasicController : MonoBehaviour {
 	private void wasdStart() {
 		currentSpeed = walkSpeed;
 	}
-
+	
 	private void wasdUpdate() {
 		if (Input.GetKeyDown(KeyCode.LeftShift)) {
 			run = true;
@@ -56,12 +49,12 @@ public class BasicController : MonoBehaviour {
 		}
 
 		p.x = Input.GetAxis("Horizontal") * Time.deltaTime * currentSpeed;
-		if (useYAxis) {
-			p.y = Input.GetAxis(yAxisName) * Time.deltaTime * currentSpeed;
-		}
-		else {
-			p.y = 0f;
-		}
+        if (useYAxis) {
+            p.y = Input.GetAxis(yAxisName) * Time.deltaTime * currentSpeed;
+        }
+        else {
+            p.y = 0f;
+        }
 		p.z = Input.GetAxis("Vertical") * Time.deltaTime * currentSpeed;
 
 		transform.Translate(p.x, p.y, p.z);
@@ -76,9 +69,9 @@ public class BasicController : MonoBehaviour {
 	// ~ ~ ~ ~ ~ ~ ~ ~ 
 
 	public enum RotationAxes { MouseXAndY, MouseX, MouseY };
-	[Header("Mouse")]
-	public bool useMouse = true;
-	public bool showCursor = false;
+    [Header("Mouse")]
+    public bool useMouse = true;
+    public bool showCursor = false;
 	public bool useButton = true;
 	public RotationAxes axes = RotationAxes.MouseXAndY;
 	public float sensitivityX = 2f;
@@ -97,8 +90,8 @@ public class BasicController : MonoBehaviour {
 	private float rotationY = 0f;
 
 	private void mouseStart() {
-		Cursor.visible = showCursor;
-		if (rb != null) rb.freezeRotation = true;
+        Cursor.visible = showCursor;
+		if (GetComponent<Rigidbody>()) GetComponent<Rigidbody>().freezeRotation = true;
 	}
 
 	private void mouseUpdate() {
@@ -144,16 +137,12 @@ public class BasicController : MonoBehaviour {
 	[Header("Raycaster")]
 	public bool useRaycaster = true;
 	public bool followMouse = true;
-	public bool debugRaycaster = true;
 
 	[HideInInspector] public bool isLooking = false;
 	[HideInInspector] public string isLookingAt = "";
 	[HideInInspector] public Vector3 lastHitPos = Vector3.one;
 
-	private float debugDrawTime = 0.3f;
-	private float debugRayScale = 100f;
-
-	private void rayUpdate() {
+	void rayUpdate() {
 		RaycastHit hit;
 		Ray ray;
 
@@ -172,32 +161,6 @@ public class BasicController : MonoBehaviour {
 			isLooking = false;
 			isLookingAt = "";
 		}
-
-		if (debugRaycaster) {
-			if (followMouse) {
-				Debug.DrawRay (Camera.main.ScreenToWorldPoint(Input.mousePosition), transform.forward * debugRayScale, Color.red, debugDrawTime, false);
-			} else {
-				Debug.DrawRay(transform.position, transform.forward * debugRayScale, Color.red, debugDrawTime, false);
-			}
-			Debug.Log ("isLooking: " + isLooking + " isLookingAt: " + isLookingAt + " lastHitPos: " + lastHitPos);
-		}
 	}
-
-	// ~ ~ ~ ~ ~ ~ ~ ~ 
-
-	[Header("Collisions")]
-	public bool useCollisions = false;
-
-	private void collisionStart() {
-		if (rb != null) {
-			if (useCollisions) {
-				rb.useGravity = true;
-				rb.constraints = RigidbodyConstraints.FreezePositionX | RigidbodyConstraints.FreezePositionZ | RigidbodyConstraints.FreezeRotation;
-			} else {
-				rb.useGravity = false;
-				rb.constraints = RigidbodyConstraints.FreezePosition | RigidbodyConstraints.FreezeRotation;
-			}
-		}
-	}
-
+		
 }
