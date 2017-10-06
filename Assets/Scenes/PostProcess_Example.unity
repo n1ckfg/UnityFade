@@ -288,5 +288,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   startMode: 0
+  fadeMode: 2
   fadeTime: 3
   debug: 1

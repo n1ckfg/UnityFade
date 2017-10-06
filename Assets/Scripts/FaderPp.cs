@@ -7,14 +7,19 @@ public class FaderPp : MonoBehaviour {
 
     public enum StartMode { FADE_IN, FADE_OUT, NONE };
     public StartMode startMode = StartMode.FADE_IN;
-    public float fadeTime = 3f;
+	public enum FadeMode { FADE, TEMP, FADE_TEMP };
+	public FadeMode fadeMode = FadeMode.FADE;
+	public float fadeTime = 3f;
     public bool debug = false;
 
     private bool isBlocked = false;
-    private float expVal = 0f;
     private PostProcessingProfile pp;
-    private float maxExp = 0f;
-    private float minExp = -8f;
+	private float fadeVal = 0f; 
+    private float maxFade = 0f;
+    private float minFade = -8f;
+	private float tempVal = 0f;
+	private float maxTemp = 0f;
+	private float minTemp = -85f;
 
     private void OnEnable() {
         var behavior = GetComponent<PostProcessingBehaviour>();
@@ -64,44 +69,121 @@ public class FaderPp : MonoBehaviour {
 
     private IEnumerator doFadeOut(float _fadeTime) {
         isBlocked = true;
-        doExpSettings(maxExp);
 
-        while (expVal > minExp) {
-            expVal -= getExpDelta(_fadeTime);
-            if (expVal < minExp) expVal = minExp;
-            doExpSettings(expVal);
+		switch (fadeMode) {
+			case (FadeMode.FADE):
+		        doFadeSettings(maxFade);
 
-            yield return new WaitForSeconds(0);
-        }
+		        while (fadeVal > minFade) {
+		            fadeVal -= getFadeDelta(_fadeTime);
+		            if (fadeVal < minFade) fadeVal = minFade;
+		            doFadeSettings(fadeVal);
+
+		            yield return new WaitForSeconds(0);
+		        }
+				break;
+			case (FadeMode.TEMP):
+				doTempSettings(maxTemp);
+
+				while (tempVal > minTemp) {
+					tempVal -= getTempDelta(_fadeTime);
+					if (tempVal < minTemp) tempVal = minTemp;
+					doTempSettings(tempVal);
+
+					yield return new WaitForSeconds(0);
+				}
+				break;
+			case (FadeMode.FADE_TEMP):
+			doFadeTempSettings(maxFade, maxTemp);
+
+			while (fadeVal > minFade || tempVal > minTemp) {
+				fadeVal -= getFadeDelta(_fadeTime);
+				tempVal -= getTempDelta(_fadeTime);
+				if (fadeVal < minFade) fadeVal = minFade;
+				if (tempVal < minTemp) tempVal = minTemp;
+				doFadeTempSettings(fadeVal, tempVal);
+
+				yield return new WaitForSeconds(0);
+			}
+			break;
+		}
 
         isBlocked = false;
     }
 
     private IEnumerator doFadeIn(float _fadeTime) {
         isBlocked = true;
-        doExpSettings(minExp);
 
-        while (expVal < maxExp) {
-            expVal += getExpDelta(_fadeTime);
-            if (expVal > maxExp) expVal = maxExp;
-            doExpSettings(expVal);
+		switch (fadeMode) {
+			case (FadeMode.FADE):
+		        doFadeSettings(minFade);
 
-            yield return new WaitForSeconds(0);
-        }
+		        while (fadeVal < maxFade) {
+		            fadeVal += getFadeDelta(_fadeTime);
+		            if (fadeVal > maxFade) fadeVal = maxFade;
+		            doFadeSettings(fadeVal);
+
+		            yield return new WaitForSeconds(0);
+		        }
+				break;
+			case (FadeMode.TEMP):
+				doTempSettings(minTemp);
+
+				while (tempVal < maxTemp) {
+					tempVal += getTempDelta(_fadeTime);
+					if (tempVal > maxTemp) tempVal = maxTemp;
+					doTempSettings(tempVal);
+
+					yield return new WaitForSeconds(0);
+				}
+				break;
+			case (FadeMode.FADE_TEMP):
+			doFadeTempSettings(minFade, minTemp);
+
+			while (fadeVal < maxFade || tempVal < maxTemp) {
+				fadeVal += getFadeDelta(_fadeTime);
+				tempVal += getTempDelta(_fadeTime);
+				if (fadeVal > maxFade) fadeVal = maxFade;
+				if (tempVal > maxTemp) tempVal = maxTemp;
+				doFadeTempSettings(fadeVal, tempVal);
+
+				yield return new WaitForSeconds(0);
+			}
+			break;
+		}
 
         isBlocked = false;
     }
 
-    private float getExpDelta(float _fadeTime) {
-        return Mathf.Abs(maxExp-minExp) / (_fadeTime * (1f / Time.deltaTime));
+    private float getFadeDelta(float _fadeTime) {
+        return Mathf.Abs(maxFade-minFade) / (_fadeTime * (1f / Time.deltaTime));
     }
 
+	private float getTempDelta(float _tempTime) {
+		return Mathf.Abs(maxTemp-minTemp) / (_tempTime * (1f / Time.deltaTime));
+	}
 
-    private void doExpSettings(float exp) {
-        expVal = exp;
+    private void doFadeSettings(float exp) {
+        fadeVal = exp;
         var colorGrading = pp.colorGrading.settings;
         colorGrading.basic.postExposure = exp;
         pp.colorGrading.settings = colorGrading;
     }
+
+	private void doTempSettings(float temp) {
+		tempVal = temp;
+		var colorGrading = pp.colorGrading.settings;
+		colorGrading.basic.temperature = temp;
+		pp.colorGrading.settings = colorGrading;
+	}
+
+	private void doFadeTempSettings(float exp, float temp) {
+		fadeVal = exp;
+		tempVal = temp;
+		var colorGrading = pp.colorGrading.settings;
+		colorGrading.basic.postExposure = exp;
+		colorGrading.basic.temperature = temp;
+		pp.colorGrading.settings = colorGrading;
+	}
 
 }
