@@ -10,16 +10,25 @@ public class FaderPp : MonoBehaviour {
 	public enum FadeMode { FADE, TEMP, FADE_TEMP };
 	public FadeMode fadeMode = FadeMode.FADE;
 	public float fadeTime = 3f;
+	//public float startDelay = 1f;
     public bool debug = false;
+	public AudioSource audio;
+
+	private float maxFade = 0f;
+	private float minFade = -8f;
+	private float maxTemp = 0f;
+	private float minTemp = -85f;
+	private float maxAudio = 1f;
+	private float minAudio = 0f;
 
     private bool isBlocked = false;
     private PostProcessingProfile pp;
 	private float fadeVal = 0f; 
-    private float maxFade = 0f;
-    private float minFade = -8f;
 	private float tempVal = 0f;
-	private float maxTemp = 0f;
-	private float minTemp = -85f;
+	private float audioVal = 0f;
+	private float audioThresh = 0.0001f;
+
+	private bool doAudio = false;
 
     private void OnEnable() {
         var behavior = GetComponent<PostProcessingBehaviour>();
@@ -34,6 +43,12 @@ public class FaderPp : MonoBehaviour {
     }
 
     private void Start() {
+		if (audio != null) {
+			doAudio = true;
+			maxAudio = audio.volume;
+			audio.Pause();
+		}
+			
         if (startMode == StartMode.FADE_IN) {
             fadeIn();
         } else if (startMode == StartMode.FADE_OUT) {
@@ -75,9 +90,9 @@ public class FaderPp : MonoBehaviour {
 		        doFadeSettings(maxFade);
 
 		        while (fadeVal > minFade) {
-		            fadeVal -= getFadeDelta(_fadeTime);
-		            if (fadeVal < minFade) fadeVal = minFade;
+					setNewFadeOut(_fadeTime);
 		            doFadeSettings(fadeVal);
+					if (doAudio) setNewAudioOut(_fadeTime);
 
 		            yield return new WaitForSeconds(0);
 		        }
@@ -86,9 +101,9 @@ public class FaderPp : MonoBehaviour {
 				doTempSettings(maxTemp);
 
 				while (tempVal > minTemp) {
-					tempVal -= getTempDelta(_fadeTime);
-					if (tempVal < minTemp) tempVal = minTemp;
+					setNewTempOut(_fadeTime);
 					doTempSettings(tempVal);
+					if (doAudio) setNewAudioOut(_fadeTime);
 
 					yield return new WaitForSeconds(0);
 				}
@@ -97,31 +112,32 @@ public class FaderPp : MonoBehaviour {
 			doFadeTempSettings(maxFade, maxTemp);
 
 			while (fadeVal > minFade || tempVal > minTemp) {
-				fadeVal -= getFadeDelta(_fadeTime);
-				tempVal -= getTempDelta(_fadeTime);
-				if (fadeVal < minFade) fadeVal = minFade;
-				if (tempVal < minTemp) tempVal = minTemp;
+				setNewFadeOut(_fadeTime);
+				setNewTempOut(_fadeTime);
 				doFadeTempSettings(fadeVal, tempVal);
+				if (doAudio) setNewAudioOut(_fadeTime);
 
 				yield return new WaitForSeconds(0);
 			}
 			break;
 		}
 
+		if (doAudio) audio.Pause();
         isBlocked = false;
     }
 
     private IEnumerator doFadeIn(float _fadeTime) {
         isBlocked = true;
+		if (doAudio) audio.Play();
 
 		switch (fadeMode) {
 			case (FadeMode.FADE):
 		        doFadeSettings(minFade);
 
 		        while (fadeVal < maxFade) {
-		            fadeVal += getFadeDelta(_fadeTime);
-		            if (fadeVal > maxFade) fadeVal = maxFade;
+					setNewFadeIn(_fadeTime);
 		            doFadeSettings(fadeVal);
+					if (doAudio) setNewAudioIn(_fadeTime);
 
 		            yield return new WaitForSeconds(0);
 		        }
@@ -130,9 +146,9 @@ public class FaderPp : MonoBehaviour {
 				doTempSettings(minTemp);
 
 				while (tempVal < maxTemp) {
-					tempVal += getTempDelta(_fadeTime);
-					if (tempVal > maxTemp) tempVal = maxTemp;
+					setNewTempIn(_fadeTime);
 					doTempSettings(tempVal);
+					if (doAudio) setNewAudioIn(_fadeTime);
 
 					yield return new WaitForSeconds(0);
 				}
@@ -141,11 +157,10 @@ public class FaderPp : MonoBehaviour {
 			doFadeTempSettings(minFade, minTemp);
 
 			while (fadeVal < maxFade || tempVal < maxTemp) {
-				fadeVal += getFadeDelta(_fadeTime);
-				tempVal += getTempDelta(_fadeTime);
-				if (fadeVal > maxFade) fadeVal = maxFade;
-				if (tempVal > maxTemp) tempVal = maxTemp;
+				setNewFadeIn(_fadeTime);
+				setNewTempIn(_fadeTime);
 				doFadeTempSettings(fadeVal, tempVal);
+				if (doAudio) setNewAudioIn(_fadeTime);
 
 				yield return new WaitForSeconds(0);
 			}
@@ -155,13 +170,47 @@ public class FaderPp : MonoBehaviour {
         isBlocked = false;
     }
 
-    private float getFadeDelta(float _fadeTime) {
-        return Mathf.Abs(maxFade-minFade) / (_fadeTime * (1f / Time.deltaTime));
+	// ~ ~ ~
+
+	private void setNewFadeIn(float _fadeTime) {
+		fadeVal += getDelta(_fadeTime, maxFade, minFade);
+		if (fadeVal > maxFade) fadeVal = maxFade;
+	}
+
+	private void setNewFadeOut(float _fadeTime) {
+		fadeVal -= getDelta(_fadeTime, maxFade, minFade);
+		if (fadeVal < minFade) fadeVal = minFade;
+	}
+
+	private void setNewTempIn(float _fadeTime) {
+		tempVal += getDelta(_fadeTime, maxTemp, minTemp);
+		if (tempVal > maxTemp) tempVal = maxTemp;	
+	}
+
+	private void setNewTempOut(float _fadeTime) {
+		tempVal -= getDelta(_fadeTime, maxTemp, minTemp);
+		if (tempVal < minTemp) tempVal = minTemp;
+	}
+
+	private void setNewAudioIn(float _fadeTime) {
+		audioVal += getDelta(_fadeTime, maxAudio, minAudio);
+		if (audioVal > maxAudio) audioVal = maxAudio;
+		audio.volume = audioVal;
+	}
+
+	private void setNewAudioOut(float _fadeTime) {
+		audioVal -= getDelta(_fadeTime, maxAudio, minAudio);
+		if (audioVal < minAudio) audioVal = minAudio;
+		audio.volume = audioVal;
+	}
+
+	// ~ ~ ~ 
+
+    private float getDelta(float _time, float _max, float _min) {
+        return Mathf.Abs(_max-_min) / (_time * (1f / Time.deltaTime));
     }
 
-	private float getTempDelta(float _tempTime) {
-		return Mathf.Abs(maxTemp-minTemp) / (_tempTime * (1f / Time.deltaTime));
-	}
+	// ~ ~ ~
 
     private void doFadeSettings(float exp) {
         fadeVal = exp;
